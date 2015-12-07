@@ -9,6 +9,8 @@
   "license": "Apache-2.0",
   "extraIncludes": [],
   "dependencies": {
+    "mbed-hal-frdm-k64f":"sg-/mbed-hal-frdm-k64f#crc-uuid",
+    "mbed-hal-k64f":"sg-/mbed-hal-k64f#add-crc",
     "mbed-client": "^1.0.0"
   },
   "targetDependencies": {},
