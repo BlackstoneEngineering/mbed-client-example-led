@@ -24,6 +24,7 @@
 #include "mbed-client/m2mdevice.h"
 #include "mbed-client/m2minterfaceobserver.h"
 #include "mbed-client/m2minterface.h"
+#include "mbed-client/m2mobject.h"
 #include "mbed-client/m2mobjectinstance.h"
 #include "mbed-client/m2mresource.h"
 #include "minar/minar.h"
@@ -60,6 +61,18 @@ const uint8_t STATIC_VALUE[] = "Static Value Example String";
 */
 class MbedClient: public M2MInterfaceObserver {
 public:
+
+    /*
+    *  Callback function to handle POST data, registed below
+    *  The argument passed in is a null terminated string representing the POST request payload. 
+    */
+    void resourceCallbackFn(void *postData) {
+        printf("\r\nPOST callback!, payload received : '%s'\r\n",postData);
+        // Toggle LED
+        static DigitalOut led(LED1);
+        led = !led;
+    }
+    
     /*
     *  Example of creating generic ObjectID/ObjectInstance/ResourceID
     *  This can be used to create custom LWM2M objects / resource pairs that 
@@ -84,12 +97,15 @@ public:
                     
                     char buffer[20];
                     int size = sprintf(buffer,"%d",_value);
-                    // Allow CoAP GET operations on this object
-                    res->set_operation(M2MBase::GET_PUT_ALLOWED);
+                    // Allow CoAP GET/POST/PUT operations on this object
+                    res->set_operation(M2MBase::GET_PUT_POST_ALLOWED);
                     // set value of /Test/0/D to be the contents of the 'buffer' array
                     res->set_value((const uint8_t*)buffer,
                                    (const uint32_t)size);
                     _value++;
+                    // register execute callback function for POST data
+                    res->set_execute_function(execute_callback(this,&MbedClient::resourceCallbackFn));
+                    
                     
                     // create static (non-changeable) string resource /Test/0/S, assign resource value now 
                     inst->create_static_resource("S",                           // metadata resource name
@@ -337,10 +353,17 @@ public:
     /* Callback from mbed client stack if any value has changed
     *  during PUT operation. Object and its type is passed in
     *  the callback.
+    *  BaseType enum from m2mbase.h
+    *       Object = 0x0, Resource = 0x1, ObjectInstance = 0x2, ResourceInstance = 0x3
     */
     void value_updated(M2MBase *base, M2MBase::BaseType type) {
-        printf("\r\nValue updated of Object name %s and Type %d",
-               base->name().c_str(), type);
+        printf("\r\nPUT Request Received!");
+        printf("\r\nValue updated of Object name '%s', \r\nType '%d' (0 for Object, 1 for Resource), \r\nResourceType = '%s'\r\n",
+               base->name().c_str(), 
+               type,
+               base->resource_type().c_str()
+               );
+        //TODO: access the data from the PUT request
     }
 
     /*
