@@ -128,11 +128,16 @@ public:
                     M2MResource* res = inst->resource("D"); // grab ResourceID
 
                     char buffer[20];
-                    int size = sprintf(buffer,"%d",_value);
+                    uint32_t size = 5;
+                    _value++;
+                    //res->get_value(buffer,size);
+                    //printf("\r\nres->get_value = '%d', size = '%d'",buffer[0],size);
                     // update /Test/0/D resource value
+                    size = sprintf(buffer,"%d",_value);
                     res->set_value((const uint8_t*)buffer,
                                    (const uint32_t)size);
-                    _value++;
+                    printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffer,size);
+                    
                 }
         }
     }
@@ -358,12 +363,11 @@ public:
     */
     void value_updated(M2MBase *base, M2MBase::BaseType type) {
         printf("\r\nPUT Request Received!");
-        printf("\r\nValue updated of Object name '%s', \r\nType '%d' (0 for Object, 1 for Resource), \r\nResourceType = '%s'\r\n",
+        printf("\r\nName :'%s', \r\nType : '%d' (0 for Object, 1 for Resource), \r\nType : '%s'\r\n",
                base->name().c_str(), 
                type,
                base->resource_type().c_str()
                );
-        //TODO: access the data from the PUT request
     }
 
     /*
