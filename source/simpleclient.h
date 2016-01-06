@@ -120,24 +120,26 @@ public:
 
     /*
     * Update the resource /Test/0/D value, in this case by one each time
+    *  This code will read the last value from connector, then incriment it by 1
+    *  try pressing the button, then put to the /Test/0/D resource from connector
+    *   you should see the value update next time the button is pressed. 
     */
     void update_resource() {
         if(_object) { // verify ObjectID is valid
-            M2MObjectInstance* inst = _object->object_instance(); // grab ObjectInstance
+            M2MObjectInstance* inst = _object->object_instance();   // grab ObjectInstance
             if(inst) {// verify ObjectInstance is valid
-                    M2MResource* res = inst->resource("D"); // grab ResourceID
-
-                    char buffer[20];
-                    uint32_t size = 5;
-                    _value++;
-                    //res->get_value(buffer,size);
-                    //printf("\r\nres->get_value = '%d', size = '%d'",buffer[0],size);
-                    // update /Test/0/D resource value
-                    size = sprintf(buffer,"%d",_value);
-                    res->set_value((const uint8_t*)buffer,
-                                   (const uint32_t)size);
-                    printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffer,size);
-                    
+                    M2MResource* res = inst->resource("D");         // grab ResourceID
+                    uint8_t * buffInPtr;
+                    uint32_t sizeIn;
+                    uint8_t buffOut[20];
+                    uint32_t size;
+                    res->get_value(buffInPtr,sizeIn);           // grab last value from connector
+                    printf("\r\nres->get_value = '%s'",buffInPtr);
+                    _value = atoi((const char *)buffInPtr);     // convert string to int, update variable
+                    _value++;                                   // incriment value
+                    size = sprintf(buffOut,"%d",_value);        // convert value to string
+                    res->set_value(&buffOut,size);              // send value to connector
+                    printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
                 }
         }
     }
