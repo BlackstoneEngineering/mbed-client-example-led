@@ -1,13 +1,22 @@
+<<<<<<< HEAD
 # Object files
 *.o
 *.ko
 *.obj
 *.elf
+=======
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+>>>>>>> 530892fdf294c51a4683d00ada282d32612f3b60
 
 # Precompiled Headers
 *.gch
 *.pch
 
+<<<<<<< HEAD
 # Libraries
 *.lib
 *.a
@@ -19,11 +28,27 @@
 *.so
 *.so.*
 *.dylib
+=======
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+>>>>>>> 530892fdf294c51a4683d00ada282d32612f3b60
 
 # Executables
 *.exe
 *.out
 *.app
+<<<<<<< HEAD
 *.i*86
 *.x86_64
 *.hex
@@ -31,3 +56,5 @@
 yotta_modules
 yotta_targets
 build
+=======
+>>>>>>> 530892fdf294c51a4683d00ada282d32612f3b60
