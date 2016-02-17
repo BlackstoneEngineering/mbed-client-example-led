@@ -30,7 +30,6 @@ MbedClient mbed_client; // Instantiate the class which implements LWM2M Client A
 
 // Set up Hardware interrupt button.
 InterruptIn obs_button(SW2);
-InterruptIn unreg_button(SW3);
 
 void app_start(int /*argc*/, char* /*argv*/[]) {
 
@@ -45,9 +44,6 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     lwipv4_socket_init();
     output.printf("IP address %s\r\n", eth.getIPAddress());
 
-    // Unregister button press will unregister endpoint from connector.mbed.com
-    unreg_button.fall(&mbed_client,&MbedClient::test_unregister);
-
     // Observation Button press will send update of endpoint resource values to connector
     obs_button.fall(&mbed_client,&MbedClient::update_resource);
 
@@ -57,14 +53,14 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     // Create Objects of varying types, see simpleclient.h for more details on implementation.
     M2MSecurity* register_object = mbed_client.create_register_object(); // server object specifying connector info
     M2MDevice*   device_object   = mbed_client.create_device_object();   // device resources object
-    M2MObject*   generic_object  = mbed_client.create_generic_object();  // generic object with custom resources
+    M2MObject*   led_object     = mbed_client.create_led_object();  // generic object with custom resources
 
     // Create list of Objects to register
     M2MObjectList object_list;
     
     // Add objects to list
     object_list.push_back(device_object);
-    object_list.push_back(generic_object);
+    object_list.push_back(led_object);
 
     // Set endpoint registration object 
     mbed_client.set_register_object(register_object);

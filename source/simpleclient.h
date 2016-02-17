@@ -29,6 +29,7 @@
 #include "mbed-client/m2mresource.h"
 #include "minar/minar.h"
 #include "security.h"
+#include <cmath>
 
 
 //Select binding mode: UDP or TCP
@@ -42,12 +43,13 @@ const String &MBED_USER_NAME_DOMAIN = MBED_DOMAIN;
 const String &ENDPOINT_NAME = MBED_ENDPOINT_NAME;
 
 // These are example resource values for the Device Object
-const String &MANUFACTURER = "Manufacturer_String";
-const String &TYPE = "Type_String";
-const String &MODEL_NUMBER = "ModelNumber_String";
-const String &SERIAL_NUMBER = "SerialNumber_String";
+const String &MANUFACTURER = "spiffy";
+const String &TYPE = "led";
+const String &MODEL_NUMBER = "NCC-74656";
+const String &SERIAL_NUMBER = "1701";
 
-const uint8_t STATIC_VALUE[] = "Static Value Example String";
+#define LED_OFF 1
+#define LED_ON 0
 
 /*
 * Wrapper for mbed client stack that handles all callbacks, error handling, and
@@ -66,57 +68,102 @@ public:
     *  Callback function to handle POST data, registed below
     *  The argument passed in is a null terminated string representing the POST request payload. 
     */
-    void resourceCallbackFn(void *postData) {
-        printf("\r\nPOST callback!, payload received : '%s'\r\n",postData);
-        // Toggle LED
-        static DigitalOut led(LED1);
-        led = !led;
+    void redCallback(void *postData) {
+        printf("\r\nred led POST callback!, payload received : '%s'\r\n",postData);
+        static DigitalOut ledR(LED1);
+        _red = atoi((const char *)postData);
+        ledR = _red;
+        
+        // update mbed client stack value for the resouce accordingly
+        if(_led_object) { // verify ObjectID is valid
+            M2MObjectInstance* inst = _led_object->object_instance(); // grab ObjectInstance
+            if(inst) {// verify ObjectInstance is valid
+                    M2MResource* res = inst->resource("red"); // grab ResourceID
+                    char buffOut[20];
+                    int size;
+                    size = sprintf(buffOut,"%d",_red);
+                    res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                   (const uint32_t)size);
+                    //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+        }
     }
     
-    /*
-    *  Example of creating generic ObjectID/ObjectInstance/ResourceID
-    *  This can be used to create custom LWM2M objects / resource pairs that 
-    *    are not standardized in the M2MInterfaceFactory.
-    *  Here we are creating /Test/0/D with a dynamic integer value 
-    *    and /Test/0/S with a static string value
-    *
-    * Types of Resources allowed are : STRING,INTEGER,FLOAT,BOOLEAN,OPAQUE,TIME,OBJLINK
-    */
-    M2MObject* create_generic_object() {
-        // create ObjectID with metadata tag of 'Test'
-        _object = M2MInterfaceFactory::create_object("Test");
-        if(_object) { // verify ObjectID was created
+    void greenCallback(void *postData) {
+        printf("\r\green led POST callback!, payload received : '%s'\r\n",postData);
+        static DigitalOut ledG(LED2);
+        _green = atoi((const char *)postData);
+        ledG = _green;
+        
+        // update mbed client stack value for the resouce accordingly
+        if(_led_object) { // verify ObjectID is valid
+            M2MObjectInstance* inst = _led_object->object_instance(); // grab ObjectInstance
+            if(inst) {// verify ObjectInstance is valid
+                    M2MResource* res = inst->resource("green"); // grab ResourceID
+                    char buffOut[20];
+                    int size;
+                    size = sprintf(buffOut,"%d",_green);
+                    res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                   (const uint32_t)size);
+                    //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+        }
+    }
+    
+    void blueCallback(void *postData) {
+        printf("\r\nblue led POST callback!, payload received : '%s'\r\n",postData);
+        static DigitalOut ledB(LED3);
+        _blue = atoi((const char *)postData);
+        ledB = _blue;
+        
+        // update mbed client stack value for the resouce accordingly
+        if(_led_object) { // verify ObjectID is valid
+            M2MObjectInstance* inst = _led_object->object_instance(); // grab ObjectInstance
+            if(inst) {// verify ObjectInstance is valid
+                    M2MResource* res = inst->resource("blue"); // grab ResourceID
+                    char buffOut[20];
+                    int size;
+                    size = sprintf(buffOut,"%d",_blue);
+                    res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                   (const uint32_t)size);
+                    //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+        }
+    }
+    
+    M2MObject* create_led_object() {// create ObjectID with metadata tag of 'Test'
+        _led_object = M2MInterfaceFactory::create_object("led");
+        if(_led_object) { // verify ObjectID was created
             // create ObjectInstance
-            M2MObjectInstance* inst = _object->create_object_instance();
+            M2MObjectInstance* inst = _led_object->create_object_instance();
             if(inst) {// verify ObjectInstance was created
                     // create dynamic (changeable) ResourceID /Test/0/D, assign resource value seperately
-                    M2MResource* res = inst->create_dynamic_resource("D",                           // metadata resource name string
-                                                                     "Dynamic Resource Test",       // metadata resource type string
-                                                                     M2MResourceInstance::INTEGER,  // resource type
-                                                                     true);                         // is resource observable/viewable by mDS? 
-                    
+                    M2MResource* redResource = inst->create_dynamic_resource("red","LED-red-type",M2MResourceInstance::BOOLEAN,true);
                     char buffer[20];
-                    int size = sprintf(buffer,"%d",_value);
-                    // Allow CoAP GET/POST/PUT operations on this object
-                    res->set_operation(M2MBase::GET_PUT_POST_ALLOWED);
-                    // set value of /Test/0/D to be the contents of the 'buffer' array
-                    res->set_value((const uint8_t*)buffer,
-                                   (const uint32_t)size);
-                    _value++;
-                    // register execute callback function for POST data
-                    res->set_execute_function(execute_callback(this,&MbedClient::resourceCallbackFn));
+                    int size;
+                    size = sprintf(buffer,"%d",_red);
+                    redResource->set_operation(M2MBase::GET_POST_ALLOWED);
+                    redResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+                    redResource->set_execute_function(execute_callback(this,&MbedClient::redCallback));
+                    
+                    M2MResource* greenResource = inst->create_dynamic_resource("green","LED-green-type",M2MResourceInstance::BOOLEAN,true);
+                    size = sprintf(buffer,"%d",_green);
+                    greenResource->set_operation(M2MBase::GET_POST_ALLOWED);
+                    greenResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+                    greenResource->set_execute_function(execute_callback(this,&MbedClient::greenCallback));
+                    
+                    M2MResource* blueResource = inst->create_dynamic_resource("blue","LED-blue-type",M2MResourceInstance::BOOLEAN,true);
+                    size = sprintf(buffer,"%d",_blue);
+                    blueResource->set_operation(M2MBase::GET_POST_ALLOWED);
+                    blueResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+                    blueResource->set_execute_function(execute_callback(this,&MbedClient::blueCallback));
                     
                     
-                    // create static (non-changeable) string resource /Test/0/S, assign resource value now 
-                    inst->create_static_resource("S",                           // metadata resource name
-                                                 "Static Resource Test",        // metadata resource type
-                                                 M2MResourceInstance::STRING,   // resource type
-                                                 STATIC_VALUE,                  // pointer to resource value data
-                                                 sizeof(STATIC_VALUE)-1);       // size of value data
             }
         }
-        return _object;
+        return _led_object;
     }
+    
 
     /*
     * Update the resource /Test/0/D value, in this case by one each time
@@ -145,7 +192,7 @@ public:
                 }
         }
     }
-    
+ 
 /*****************************************************************************
  * Everything below here is just standard implementation of the class.
  * The important part for the end user is above, namely how to set up a
@@ -162,7 +209,11 @@ public:
         _unregistered = false;
         _register_security = NULL;
         _value = 0;
+        _red = LED_OFF;
+        _blue = LED_OFF;
+        _green = LED_OFF;
         _object = NULL;
+        _led_object = NULL;
     }
 
     // de-constructor for MbedClient object, you can ignore this
@@ -400,11 +451,15 @@ private:
     M2MInterface    	*_interface;
     M2MSecurity         *_register_security;
     M2MObject           *_object;
+    M2MObject           *_led_object;
     volatile bool       _bootstrapped;
     volatile bool       _error;
     volatile bool       _registered;
     volatile bool       _unregistered;
     int                 _value;
+    int                 _red;
+    int                 _green;
+    int                 _blue;
 };
 
 #endif // __SIMPLECLIENT_H__
