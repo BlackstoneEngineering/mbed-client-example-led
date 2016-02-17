@@ -28,8 +28,13 @@ EthernetInterface eth;
 
 MbedClient mbed_client; // Instantiate the class which implements LWM2M Client API
 
+AnalogIn slide(A1); // analog Potentiometer
+AnalogIn temp(A0); // analog temperature sensor (set to 3.3V)
+InterruptIn bang(D2); // collision sensor
+
 // Set up Hardware interrupt button.
 InterruptIn obs_button(SW2);
+InterruptIn unreg_button(SW3);
 
 void app_start(int /*argc*/, char* /*argv*/[]) {
 
@@ -44,6 +49,9 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     lwipv4_socket_init();
     output.printf("IP address %s\r\n", eth.getIPAddress());
 
+    // Unregister button press will unregister endpoint from connector.mbed.com
+    unreg_button.fall(&mbed_client,&MbedClient::test_unregister);
+
     // Observation Button press will send update of endpoint resource values to connector
     obs_button.fall(&mbed_client,&MbedClient::update_resource);
 
@@ -54,6 +62,9 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     M2MSecurity* register_object = mbed_client.create_register_object(); // server object specifying connector info
     M2MDevice*   device_object   = mbed_client.create_device_object();   // device resources object
     M2MObject*   led_object     = mbed_client.create_led_object();  // generic object with custom resources
+    M2MObject*   temp_object    = mbed_client.create_temp_object();  // generic object with custom resources
+    M2MObject*   slide_object   = mbed_client.create_slide_object();  // generic object with custom resources
+    M2MObject*   collision_object      = mbed_client.create_collision_object();  // generic object with custom resources
 
     // Create list of Objects to register
     M2MObjectList object_list;
@@ -61,6 +72,9 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     // Add objects to list
     object_list.push_back(device_object);
     object_list.push_back(led_object);
+    object_list.push_back(temp_object);
+    object_list.push_back(slide_object);
+    object_list.push_back(collision_object);
 
     // Set endpoint registration object 
     mbed_client.set_register_object(register_object);
@@ -69,4 +83,7 @@ void app_start(int /*argc*/, char* /*argv*/[]) {
     FunctionPointer2<void, M2MSecurity*, M2MObjectList> fp(&mbed_client, &MbedClient::test_register);
     minar::Scheduler::postCallback(fp.bind(register_object,object_list));
     minar::Scheduler::postCallback(&mbed_client,&MbedClient::test_update_register).period(minar::milliseconds(25000));
+    bang.fall(&mbed_client,&MbedClient::updateCollision);
+    minar::Scheduler::postCallback(&mbed_client,&MbedClient::updateSlide).period(minar::milliseconds(1000));
+    minar::Scheduler::postCallback(&mbed_client,&MbedClient::updateTemperature).period(minar::milliseconds(1000));
 }

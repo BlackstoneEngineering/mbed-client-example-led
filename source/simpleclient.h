@@ -43,9 +43,9 @@ const String &MBED_USER_NAME_DOMAIN = MBED_DOMAIN;
 const String &ENDPOINT_NAME = MBED_ENDPOINT_NAME;
 
 // These are example resource values for the Device Object
-const String &MANUFACTURER = "spiffy";
-const String &TYPE = "led";
-const String &MODEL_NUMBER = "NCC-74656";
+const String &MANUFACTURER = "StarBase";
+const String &TYPE = "enterprise";
+const String &MODEL_NUMBER = "NCC";
 const String &SERIAL_NUMBER = "1701";
 
 #define LED_OFF 1
@@ -131,6 +131,47 @@ public:
         }
     }
     
+    /*
+    *  Example of creating generic ObjectID/ObjectInstance/ResourceID
+    *  This can be used to create custom LWM2M objects / resource pairs that 
+    *    are not standardized in the M2MInterfaceFactory.
+    *  Here we are creating /Test/0/D with a dynamic integer value 
+    *    and /Test/0/S with a static string value
+    *
+    * Types of Resources allowed are : STRING,INTEGER,FLOAT,BOOLEAN,OPAQUE,TIME,OBJLINK
+    */
+    /*
+    M2MObject* create_generic_object() {
+        // create ObjectID with metadata tag of 'Test'
+        _object = M2MInterfaceFactory::create_object("Test");
+        if(_object) { // verify ObjectID was created
+            // create ObjectInstance
+            M2MObjectInstance* inst = _object->create_object_instance();
+            if(inst) {// verify ObjectInstance was created
+                    // create dynamic (changeable) ResourceID /Test/0/D, assign resource value seperately
+                    M2MResource* res = inst->create_dynamic_resource("D",                           // metadata resource name string
+                                                                     "Dynamic Resource Test",       // metadata resource type string
+                                                                     M2MResourceInstance::INTEGER,  // resource type
+                                                                     true);                         // is resource observable/viewable by mDS? 
+                    
+                    char buffer[20];
+                    int size = sprintf(buffer,"%d",_value);
+                    // Allow CoAP GET/POST/PUT operations on this object
+                    res->set_operation(M2MBase::GET_PUT_POST_ALLOWED);
+                    // set value of /Test/0/D to be the contents of the 'buffer' array
+                    res->set_value((const uint8_t*)buffer,
+                                   (const uint32_t)size);
+                    _value++;
+                    // register execute callback function for POST data
+                    res->set_execute_function(execute_callback(this,&MbedClient::resourceCallbackFn));
+                    
+                    
+            }
+        }
+        return _object;
+    }
+    */
+    
     M2MObject* create_led_object() {// create ObjectID with metadata tag of 'Test'
         _led_object = M2MInterfaceFactory::create_object("led");
         if(_led_object) { // verify ObjectID was created
@@ -164,6 +205,56 @@ public:
         return _led_object;
     }
     
+    M2MObject* create_temp_object(){
+        _temp_object = M2MInterfaceFactory::create_object("temp");
+        if(_temp_object) { // verify ObjectID was created
+            M2MObjectInstance* inst = _temp_object->create_object_instance();
+            if(inst) {// verify ObjectInstance was created
+                    // create dynamic (changeable) ResourceID
+                    M2MResource* tempResource = inst->create_dynamic_resource("value","temp-value",M2MResourceInstance::INTEGER,true);
+                    char buffer[20];
+                    int size;
+                    size = sprintf(buffer,"%d",_temp);
+                    tempResource->set_operation(M2MBase::GET_ALLOWED);
+                    tempResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+            }
+        }
+        return _temp_object;
+    }
+    
+    M2MObject* create_slide_object(){
+        _slide_object = M2MInterfaceFactory::create_object("slide");
+        if(_slide_object) { // verify ObjectID was created
+            M2MObjectInstance* inst = _slide_object->create_object_instance();
+            if(inst) {// verify ObjectInstance was created
+                    // create dynamic (changeable) ResourceID
+                    M2MResource* slideResource = inst->create_dynamic_resource("value","slide-pot-value",M2MResourceInstance::INTEGER,true);
+                    char buffer[20];
+                    int size;
+                    size = sprintf(buffer,"%f",_slide);
+                    slideResource->set_operation(M2MBase::GET_ALLOWED);
+                    slideResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+            }
+        }
+        return _slide_object;
+    }
+    
+    M2MObject* create_collision_object(){
+        _collision_object = M2MInterfaceFactory::create_object("collision");
+        if(_collision_object) { // verify ObjectID was created
+            M2MObjectInstance* inst = _collision_object->create_object_instance();
+            if(inst) {// verify ObjectInstance was created
+                    // create dynamic (changeable) ResourceID
+                    M2MResource* collisionResource = inst->create_dynamic_resource("value","collision-value",M2MResourceInstance::BOOLEAN,true);
+                    char buffer[20];
+                    int size;
+                    size = sprintf(buffer,"%d",_collision);
+                    collisionResource->set_operation(M2MBase::GET_ALLOWED);
+                    collisionResource->set_value((const uint8_t*)buffer,(const uint32_t)size);
+            }
+        }
+        return _collision_object;
+    }
 
     /*
     * Update the resource /Test/0/D value, in this case by one each time
@@ -192,7 +283,78 @@ public:
                 }
         }
     }
- 
+    
+    void updateTemperature(){
+        static AnalogIn temper(A0);
+        float tempValue = 0;
+        float temperature = 0;
+        float resistance = 0;
+        int B=3975;
+        tempValue = temper;
+        resistance=(float)(1-tempValue)*10000/tempValue; //get the resistance of the sensor;
+        temperature=1/(log(resistance/10000)/B+1/298.15)-273.15;//convert to temperature via datasheet&nbsp;
+        //printf("\r\ntemp calc = %d\r\n",(int)(temperature*100));
+        //printf("\r\n_temp = %d",_temp);
+        if (abs(_temp - temperature*100) > 75){ // only update if significant temp difference
+            _temp = temperature*100;
+            printf("\r\ntemp updated : %d\r\n",_temp);
+            if(_temp_object) { // verify ObjectID is valid
+                M2MObjectInstance* inst = _temp_object->object_instance(); // grab ObjectInstance
+                if(inst) {// verify ObjectInstance is valid
+                        M2MResource* res = inst->resource("value"); // grab ResourceID
+                        char buffOut[20];
+                        int size;
+                        size = sprintf(buffOut,"%d",_temp);
+                        res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                       (const uint32_t)size);
+                        //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+            }
+                
+        }
+    }
+    
+    void updateSlide(){
+        static AnalogIn slider(A1);
+        int  temporary = slider*10000;
+        //printf("\r\nslide calc = %d",temporary);
+        //printf("\r\n_slide =%d",_slide);
+        if(abs(_slide - temporary) > 50){
+            _slide = temporary;
+            printf("\r\nslide updated : '%d'",_slide);
+            if(_slide_object) { // verify ObjectID is valid
+                M2MObjectInstance* inst = _slide_object->object_instance(); // grab ObjectInstance
+                if(inst) {// verify ObjectInstance is valid
+                        M2MResource* res = inst->resource("value"); // grab ResourceID
+                        char buffOut[20];
+                        int size;
+                        size = sprintf(buffOut,"%d",_slide);
+                        res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                       (const uint32_t)size);
+                        //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+            }
+        }
+    }
+    
+    void updateCollision(){
+        static DigitalIn bang(D2);
+        _collision = bang;
+        printf("\r\nCollision '%d'",_collision);
+        if(_collision_object) { // verify ObjectID is valid
+            M2MObjectInstance* inst = _collision_object->object_instance(); // grab ObjectInstance
+            if(inst) {// verify ObjectInstance is valid
+                    M2MResource* res = inst->resource("value"); // grab ResourceID
+                    char buffOut[20];
+                    int size;
+                    size = sprintf(buffOut,"%d",_collision);
+                    res->set_value((const uint8_t*)buffOut,         // send new value to connector
+                                   (const uint32_t)size);
+                    //printf("\r\nres->set_value = '%s', size = '%d'\r\n",buffOut,size);
+                }
+        }
+    }
+    
 /*****************************************************************************
  * Everything below here is just standard implementation of the class.
  * The important part for the end user is above, namely how to set up a
@@ -212,8 +374,14 @@ public:
         _red = LED_OFF;
         _blue = LED_OFF;
         _green = LED_OFF;
+        _temp = 25;
+        _slide = 0;
+        _collision = 0;
         _object = NULL;
         _led_object = NULL;
+        _temp_object = NULL;
+        _slide_object = NULL;
+        _collision_object = NULL;
     }
 
     // de-constructor for MbedClient object, you can ignore this
@@ -452,6 +620,9 @@ private:
     M2MSecurity         *_register_security;
     M2MObject           *_object;
     M2MObject           *_led_object;
+    M2MObject           *_temp_object;
+    M2MObject           *_slide_object;
+    M2MObject           *_collision_object;
     volatile bool       _bootstrapped;
     volatile bool       _error;
     volatile bool       _registered;
@@ -460,6 +631,9 @@ private:
     int                 _red;
     int                 _green;
     int                 _blue;
+    volatile int                 _temp;
+    volatile int                 _slide;
+    int                 _collision;
 };
 
 #endif // __SIMPLECLIENT_H__
